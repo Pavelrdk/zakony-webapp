@@ -165,6 +165,18 @@ function updateHomePreview() {
             }
         }
         list.textContent = roleNames.join(', ') || "Точные настройки";
+
+        // Показываем поиск и быстрый просмотр
+        if (dom.navItems.search) dom.navItems.search.style.display = 'flex';
+        document.getElementById('quick-view-card').style.display = 'block';
+    }
+
+    // Если нет подписок - скрываем лишнее
+    if (state.selectedRoles.size === 0 && state.selectedTags.size === 0) {
+        if (dom.navItems.search) dom.navItems.search.style.display = 'none';
+
+        const qv = document.getElementById('quick-view-card');
+        if (qv) qv.style.display = 'none';
     }
 }
 
