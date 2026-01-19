@@ -260,23 +260,10 @@ function updateFab() {
             <button class="fab-btn" style="background:#8e8e93; margin-right:auto" onclick="showSettingsScreen('roles')">← Роли</button>
             <button class="fab-btn" onclick="saveSettings()">Сохранить ✓</button>
          `;
-        addHintToSettings();
     }
 }
 
-function addHintToSettings() {
-    const container = document.getElementById('all-tags-container');
-    if (!container) return;
-    if (!document.getElementById('settings-hint')) {
-        const hint = document.createElement('div');
-        hint.id = 'settings-hint';
-        hint.className = 'subtitle';
-        hint.style.textAlign = 'center';
-        hint.style.marginTop = '20px';
-        hint.textContent = "👆 Это темы, которые мы подобрали. Удалите лишние или добавьте новые.";
-        container.appendChild(hint);
-    }
-}
+
 
 // ---- Render Logic ----
 
