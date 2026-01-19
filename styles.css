@@ -1,4 +1,4 @@
-/* Стили для Telegram Mini App (Compact Version) */
+/* Стили для Super App (Compact Version) */
 :root {
     --bg-color: var(--tg-theme-bg-color, #fff);
     --text-color: var(--tg-theme-text-color, #000);
@@ -7,29 +7,32 @@
     --button-color: var(--tg-theme-button-color, #3390ec);
     --button-text-color: var(--tg-theme-button-text-color, #fff);
     --secondary-bg-color: var(--tg-theme-secondary-bg-color, #f4f4f5);
+    --header-bg-color: var(--tg-theme-bg-color, #ffffff);
 
     --chip-bg: var(--secondary-bg-color);
     --chip-text: var(--text-color);
     --chip-selected-bg: var(--button-color);
     --chip-selected-text: var(--button-text-color);
 
-    /* Компактные переменные */
-    --spacing: 12px;
-    --radius: 8px;
-    --font-base: 13px;
+    /* UI Metrics */
+    --spacing: 16px;
+    --radius: 12px;
+    --font-base: 14px;
+    --tab-bar-height: 60px;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-color);
+    background-color: var(--secondary-bg-color);
+    /* Фон страницы теперь серый для контраста с карточками */
     color: var(--text-color);
     margin: 0;
     padding: 0;
-    padding-bottom: 70px;
-    /* Место под фиксированную кнопку стало меньше */
+    padding-bottom: calc(var(--tab-bar-height) + 20px);
     user-select: none;
     font-size: var(--font-base);
-    line-height: 1.3;
+    line-height: 1.4;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .container {
@@ -38,118 +41,189 @@ body {
     margin: 0 auto;
 }
 
+/* Карточки */
+.card {
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
 /* Заголовки */
 h2 {
-    margin: 0 0 4px 0;
-    font-size: 17px;
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+h3 {
+    margin: 0 0 12px 0;
+    font-size: 15px;
     font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.9;
 }
 
 .subtitle {
     color: var(--hint-color);
     font-size: 13px;
-    margin-bottom: 12px;
-    line-height: 1.4;
-}
-
-/* Секции категорий */
-.category-section {
     margin-bottom: 16px;
 }
 
-.category-title {
+.header-section {
+    margin-bottom: 20px;
+}
+
+/* Навигация (Tab Bar) */
+.tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--tab-bar-height);
+    background: var(--bg-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Для iPhone X+ */
+}
+
+.tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    color: var(--hint-color);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.tab-item.active {
+    color: var(--button-color);
+}
+
+.tab-icon {
+    font-size: 24px;
+    margin-bottom: 2px;
+}
+
+.tab-label {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Контент вкладок */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Forms & Inputs */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--hint-color);
+    margin-bottom: 6px;
+    margin-left: 4px;
+}
+
+.date-inputs {
     display: flex;
     align-items: center;
-    color: var(--hint-color);
-    font-size: 12px;
-    font-weight: 500;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    gap: 8px;
 }
 
-.category-title::before,
-.category-title::after {
-    content: '';
+.date-input {
     flex: 1;
-    height: 1px;
-    background-color: var(--secondary-bg-color);
-    margin: 0 8px;
+    border: 1px solid var(--secondary-bg-color);
+    background: var(--secondary-bg-color);
+    color: var(--text-color);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    -webkit-appearance: none;
 }
 
-/* Сетка чипсов */
+.date-input:focus {
+    border-color: var(--button-color);
+}
+
+/* Toggles and Chips */
+.toggle-group {
+    display: flex;
+    gap: 8px;
+}
+
+.toggle-opt {
+    flex: 1;
+    text-align: center;
+}
+
 .chips-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
 }
 
-/* Стиль чипса (Компактный) */
 .chip {
-    background-color: var(--chip-bg);
+    background-color: var(--secondary-bg-color);
     color: var(--chip-text);
-    padding: 6px 10px;
-    border-radius: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.15s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    border: 1px solid transparent;
-    /* Чтобы border не скакал */
-}
-
-.chip:active {
-    opacity: 0.7;
-    transform: scale(0.96);
 }
 
 .chip.selected {
     background-color: var(--chip-selected-bg);
     color: var(--chip-selected-text);
-    /* font-weight: 500; Убрал жирность */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.chip-icon {
-    font-size: 14px;
+.chip:active {
+    transform: scale(0.96);
+    opacity: 0.8;
 }
 
-/* Фиксированный бар снизу */
-.bottom-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--bg-color);
-    border-top: 1px solid var(--secondary-bg-color);
-    padding: 8px var(--spacing);
-    z-index: 100;
-    display: flex;
-    gap: 8px;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.03);
+.action-chip {
+    background-color: rgba(51, 144, 236, 0.1);
+    /* Light Blue tint */
+    color: var(--button-color);
+    font-weight: 500;
 }
 
+/* Кнопки */
 .btn {
+    width: 100%;
     background-color: var(--button-color);
     color: var(--button-text-color);
     border: none;
     border-radius: var(--radius);
-    padding: 10px;
-    font-size: 14px;
+    padding: 12px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    flex: 1;
     text-align: center;
-    transition: opacity 0.2s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-    height: 40px;
-    /* Фиксированная высота */
+    margin-top: 8px;
 }
 
 .btn:active {
@@ -161,14 +235,80 @@ h2 {
     color: var(--text-color);
 }
 
-/* Экраны */
-.screen {
-    display: none;
-    animation: fadeIn 0.2s ease-out;
+.btn-sm {
+    padding: 8px;
+    font-size: 13px;
 }
 
-.screen.active {
+/* Стили для Settings Flow (унаследованные элементы которые переехали) */
+.settings-screen {
+    display: none;
+    /* Скрыты по умолчанию внутри вкладки */
+}
+
+.settings-screen.active {
     display: block;
+}
+
+/* Category Sections (from old CSS) */
+.category-section {
+    margin-bottom: 16px;
+}
+
+.category-title {
+    color: var(--hint-color);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+/* Helper Screens */
+.success-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+/* FAB Container - для кнопок сохранения в настройках */
+#settings-fab-container {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + 16px);
+    left: 0;
+    right: 0;
+    padding: 0 var(--spacing);
+    z-index: 900;
+    pointer-events: none;
+    /* Чтобы клики сквозь контейнер проходили если кнопки нет */
+    display: flex;
+    justify-content: flex-end;
+}
+
+.fab-btn {
+    pointer-events: auto;
+    background: var(--button-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(51, 144, 236, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s;
+}
+
+.fab-btn:active {
+    transform: scale(0.95);
 }
 
 @keyframes fadeIn {
@@ -181,57 +321,4 @@ h2 {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-/* Информационная панель "Ваши роли" */
-.roles-summary {
-    background-color: var(--secondary-bg-color);
-    padding: 8px 12px;
-    border-radius: var(--radius);
-    margin-bottom: 16px;
-    font-size: 13px;
-    line-height: 1.4;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.roles-label {
-    color: var(--hint-color);
-    font-size: 11px;
-}
-
-.roles-list {
-    color: var(--text-color);
-    font-weight: 500;
-}
-
-/* Success screen */
-.success-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 80vh;
-    text-align: center;
-    padding: 20px;
-}
-
-.success-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: #34c759;
-    /* Green */
-}
-
-/* Очистка темы по нажатию */
-.remove-hint {
-    text-align: center;
-    font-size: 11px;
-    color: var(--hint-color);
-    margin-top: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
 }
