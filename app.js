@@ -43,23 +43,38 @@ function init() {
 }
 
 // Отрисовка ролей на первом экране
+// Отрисовка ролей на первом экране
 function renderRoles() {
-    const containers = {
-        life: document.getElementById('chips-life'),
-        business: document.getElementById('chips-business'),
-        interests: document.getElementById('chips-interests')
-    };
+    const mainContainer = document.getElementById('roles-container');
+    if (!mainContainer) return;
+
+    mainContainer.innerHTML = '';
 
     for (const [groupKey, group] of Object.entries(ROLES)) {
-        const container = containers[groupKey];
-        if (!container) continue;
+        // Создаем секцию
+        const section = document.createElement('div');
+        section.className = 'category-section';
 
-        container.innerHTML = group.items.map(role => `
+        // Заголовок секции
+        const title = document.createElement('div');
+        title.className = 'category-title';
+        title.textContent = group.title;
+        section.appendChild(title);
+
+        // Сетка для чипсов
+        const grid = document.createElement('div');
+        grid.className = 'chips-grid';
+
+        // Чипсы
+        grid.innerHTML = group.items.map(role => `
             <div class="chip" data-role="${role.code}" data-tags="${role.tags.join(',')}">
-                <span class="emoji">${role.emoji}</span>
+                <span class="chip-icon">${role.emoji}</span>
                 ${role.name}
             </div>
         `).join('');
+
+        section.appendChild(grid);
+        mainContainer.appendChild(section);
     }
 }
 
