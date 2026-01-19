@@ -17,33 +17,35 @@ if (window.Telegram && window.Telegram.WebApp) {
     tg.expand();
 
     // Применяем тему Telegram
-    document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
-    document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
-    document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
-    document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color || '#2481cc');
-    document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#2481cc');
-    document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
-    document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f0f0f0');
+    const root = document.documentElement;
+    root.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+    root.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+    root.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
+    root.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color || '#2481cc');
+    root.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#3390ec');
+    root.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+    root.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f4f4f5');
 }
 
 // DOM элементы
 const screens = {
     roles: document.getElementById('screen-roles'),
-    review: document.getElementById('screen-review'),
-    settings: document.getElementById('screen-settings'),
+    review: document.getElementById('screen-preview'),
+    settings: document.getElementById('screen-all'),
     success: document.getElementById('screen-success')
 };
+
+const bottomBar = document.getElementById('bottom-bar');
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     renderRoles();
-    bindEvents();
+    showScreen('roles');
 }
 
-// Отрисовка ролей на первом экране
-// Отрисовка ролей на первом экране
+// Отрисовка ролей
 function renderRoles() {
     const mainContainer = document.getElementById('roles-container');
     if (!mainContainer) return;
@@ -51,21 +53,17 @@ function renderRoles() {
     mainContainer.innerHTML = '';
 
     for (const [groupKey, group] of Object.entries(ROLES)) {
-        // Создаем секцию
         const section = document.createElement('div');
         section.className = 'category-section';
 
-        // Заголовок секции
         const title = document.createElement('div');
         title.className = 'category-title';
         title.textContent = group.title;
         section.appendChild(title);
 
-        // Сетка для чипсов
         const grid = document.createElement('div');
         grid.className = 'chips-grid';
 
-        // Чипсы
         grid.innerHTML = group.items.map(role => `
             <div class="chip" data-role="${role.code}" data-tags="${role.tags.join(',')}">
                 <span class="chip-icon">${role.emoji}</span>
@@ -76,27 +74,11 @@ function renderRoles() {
         section.appendChild(grid);
         mainContainer.appendChild(section);
     }
-}
 
-// Привязка событий
-function bindEvents() {
-    // Клик по чипсам ролей
-    document.querySelectorAll('#screen-roles .chip').forEach(chip => {
+    // Привязываем клики
+    mainContainer.querySelectorAll('.chip').forEach(chip => {
         chip.addEventListener('click', () => toggleRole(chip));
     });
-
-    // Кнопка "Далее"
-    document.getElementById('btn-next').addEventListener('click', goToReview);
-
-    // Кнопка "Точная настройка"
-    document.getElementById('btn-settings').addEventListener('click', goToSettings);
-
-    // Кнопка "Назад"
-    document.getElementById('btn-back').addEventListener('click', goToReview);
-
-    // Кнопки сохранения
-    document.getElementById('btn-save').addEventListener('click', saveAndClose);
-    document.getElementById('btn-save-settings').addEventListener('click', saveAndClose);
 }
 
 // Переключение роли
@@ -107,7 +89,7 @@ function toggleRole(chip) {
     if (state.selectedRoles.has(roleCode)) {
         state.selectedRoles.delete(roleCode);
         chip.classList.remove('selected');
-        // Убираем теги этой роли (если они не используются другими ролями)
+        // Убираем теги этой роли
         tags.forEach(tag => {
             if (!isTagUsedByOtherRoles(tag, roleCode)) {
                 state.selectedTags.delete(tag);
@@ -116,14 +98,14 @@ function toggleRole(chip) {
     } else {
         state.selectedRoles.add(roleCode);
         chip.classList.add('selected');
-        // Добавляем теги роли
+        // Добавляем теги
         tags.forEach(tag => state.selectedTags.add(tag));
     }
 
-    updateNextButton();
+    renderBottomBar('roles');
 }
 
-// Проверка, используется ли тег другими выбранными ролями
+// Проверка использования тега другими ролями
 function isTagUsedByOtherRoles(tag, excludeRole) {
     for (const [groupKey, group] of Object.entries(ROLES)) {
         for (const role of group.items) {
@@ -137,36 +119,89 @@ function isTagUsedByOtherRoles(tag, excludeRole) {
     return false;
 }
 
-// Обновление кнопки "Далее"
-function updateNextButton() {
-    const btn = document.getElementById('btn-next');
-    btn.disabled = state.selectedRoles.size === 0;
-}
-
-// Переход на экран обзора
-function goToReview() {
-    showScreen('review');
-    renderReview();
-}
-
-// Переход на экран настроек
-function goToSettings() {
-    showScreen('settings');
-    renderSettings();
-}
-
-// Показать экран
+// Управление экранами и навигацией
 function showScreen(screenName) {
-    Object.values(screens).forEach(s => s.classList.remove('active'));
-    screens[screenName].classList.add('active');
-    state.currentScreen = screenName;
-    window.scrollTo(0, 0);
+    // Скрываем все экраны
+    Object.values(screens).forEach(s => {
+        if (s) s.classList.remove('active');
+    });
+
+    // Показываем нужный
+    if (screens[screenName]) {
+        screens[screenName].classList.add('active');
+        state.currentScreen = screenName;
+        window.scrollTo(0, 0);
+        renderBottomBar(screenName);
+    }
+}
+
+// Отрисовка нижней панели (кнопок)
+function renderBottomBar(screenName) {
+    if (!bottomBar) return;
+
+    bottomBar.innerHTML = '';
+    bottomBar.style.display = 'flex';
+
+    if (screenName === 'roles') {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = 'Далее →';
+        // Блокируем, если ничего не выбрано
+        if (state.selectedRoles.size === 0) {
+            btn.style.opacity = '0.5';
+            btn.disabled = true;
+        } else {
+            btn.onclick = goToReview;
+        }
+        bottomBar.appendChild(btn);
+
+    } else if (screenName === 'review') {
+        const btnSettings = document.createElement('button');
+        btnSettings.className = 'btn btn-secondary';
+        btnSettings.textContent = '⚙️ Точная настройка';
+        btnSettings.onclick = goToSettings;
+
+        const btnSave = document.createElement('button');
+        btnSave.className = 'btn';
+        btnSave.textContent = 'Сохранить ✓';
+        btnSave.onclick = saveAndClose;
+
+        bottomBar.appendChild(btnSettings);
+        bottomBar.appendChild(btnSave);
+
+    } else if (screenName === 'settings') {
+        const btnBack = document.createElement('button');
+        btnBack.className = 'btn btn-secondary';
+        btnBack.textContent = '← Назад';
+        btnBack.onclick = goToReview;
+
+        const btnSave = document.createElement('button');
+        btnSave.className = 'btn';
+        btnSave.textContent = 'Сохранить ✓';
+        btnSave.onclick = saveAndClose;
+
+        bottomBar.appendChild(btnBack);
+        bottomBar.appendChild(btnSave);
+
+    } else {
+        bottomBar.style.display = 'none';
+    }
+}
+
+// Переходы
+function goToReview() {
+    renderReview();
+    showScreen('review');
+}
+
+function goToSettings() {
+    renderSettings();
+    showScreen('settings');
 }
 
 // Отрисовка экрана обзора
 function renderReview() {
-    // Показываем выбранные роли
-    const rolesDisplay = document.getElementById('roles-display');
+    const rolesDisplay = document.getElementById('selected-roles-list');
     const selectedRoleNames = [];
 
     for (const [groupKey, group] of Object.entries(ROLES)) {
@@ -176,23 +211,59 @@ function renderReview() {
             }
         }
     }
-    rolesDisplay.textContent = selectedRoleNames.join(', ');
-
-    // Группируем теги по категориям
-    const tagsByCategory = {};
-    for (const tagCode of state.selectedTags) {
-        const tag = TAGS[tagCode];
-        if (!tag) continue;
-
-        if (!tagsByCategory[tag.category]) {
-            tagsByCategory[tag.category] = [];
-        }
-        tagsByCategory[tag.category].push({ code: tagCode, ...tag });
+    if (rolesDisplay) {
+        rolesDisplay.textContent = selectedRoleNames.join(', ') || 'Нет выбранных ролей';
     }
 
-    // Отрисовываем теги
-    const container = document.getElementById('tags-preview');
+    const tagsByCategory = groupTagsByCategory();
+    const container = document.getElementById('preview-tags-container');
+    if (!container) return;
+
     container.innerHTML = '';
+
+    for (const [catCode, tags] of Object.entries(tagsByCategory)) {
+        const category = CATEGORIES[catCode];
+        if (!category) continue;
+
+        // Показываем только если есть выбранные теги в этой категории (для превью)
+        const hasSelected = tags.some(t => state.selectedTags.has(t.code));
+        if (!hasSelected) continue;
+
+        const group = document.createElement('div');
+        group.className = 'tag-group';
+
+        const grid = document.createElement('div');
+        grid.className = 'chips-grid';
+
+        grid.innerHTML = tags.filter(t => state.selectedTags.has(t.code)).map(tag => `
+            <div class="chip selected" data-tag="${tag.code}">
+                ${tag.name} <span style="margin-left:4px; opacity:0.6;">✕</span>
+            </div>
+        `).join('');
+
+        group.innerHTML = `<div class="category-title">${category.emoji} ${category.name}</div>`;
+        group.appendChild(grid);
+        container.appendChild(group);
+    }
+
+    // Удаление тегов по клику
+    // Используем .chip вместо .tag-chip, так как в HTML выше мы используем .chip
+    container.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const tagCode = chip.dataset.tag;
+            state.selectedTags.delete(tagCode);
+            renderReview(); // Перерисовываем
+        });
+    });
+}
+
+// Отрисовка настроек (всех тегов)
+function renderSettings() {
+    const container = document.getElementById('all-tags-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const tagsByCategory = groupTagsByCategory();
 
     for (const [catCode, tags] of Object.entries(tagsByCategory)) {
         const category = CATEGORIES[catCode];
@@ -200,46 +271,43 @@ function renderReview() {
 
         const group = document.createElement('div');
         group.className = 'tag-group';
-        group.innerHTML = `
-            <div class="tag-group-title">── ${category.emoji} ${category.name} ──</div>
-            <div class="chips">
-                ${tags.map(tag => `
-                    <div class="chip tag-chip selected" data-tag="${tag.code}">
-                        ${tag.name}
-                    </div>
-                `).join('')}
-            </div>
-        `;
+
+        const grid = document.createElement('div');
+        grid.className = 'chips-grid';
+        grid.style.marginBottom = '16px';
+
+        grid.innerHTML = tags.map(tag => {
+            const isSelected = state.selectedTags.has(tag.code);
+            // Добавляем класс selected, если выбрано. Если нет - просто chip (серый)
+            return `
+                <div class="chip ${isSelected ? 'selected' : ''}" data-tag="${tag.code}">
+                    ${tag.name}
+                </div>
+            `;
+        }).join('');
+
+        group.innerHTML = `<div class="category-title">${category.emoji} ${category.name}</div>`;
+        group.appendChild(grid);
         container.appendChild(group);
     }
 
-    // Привязываем клики для удаления тегов
-    container.querySelectorAll('.tag-chip').forEach(chip => {
-        chip.addEventListener('click', () => toggleTagInReview(chip));
+    // Клики
+    container.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const tagCode = chip.dataset.tag;
+            if (state.selectedTags.has(tagCode)) {
+                state.selectedTags.delete(tagCode);
+                chip.classList.remove('selected');
+            } else {
+                state.selectedTags.add(tagCode);
+                chip.classList.add('selected');
+            }
+        });
     });
 }
 
-// Переключение тега на экране обзора
-function toggleTagInReview(chip) {
-    const tagCode = chip.dataset.tag;
-
-    if (state.selectedTags.has(tagCode)) {
-        state.selectedTags.delete(tagCode);
-        chip.classList.remove('selected');
-        chip.classList.add('disabled');
-    } else {
-        state.selectedTags.add(tagCode);
-        chip.classList.add('selected');
-        chip.classList.remove('disabled');
-    }
-}
-
-// Отрисовка экрана настроек
-function renderSettings() {
-    const container = document.getElementById('tags-full');
-    container.innerHTML = '';
-
-    // Группируем все теги по категориям
+// Хелпер группировки тегов
+function groupTagsByCategory() {
     const tagsByCategory = {};
     for (const [tagCode, tag] of Object.entries(TAGS)) {
         if (!tagsByCategory[tag.category]) {
@@ -247,65 +315,21 @@ function renderSettings() {
         }
         tagsByCategory[tag.category].push({ code: tagCode, ...tag });
     }
-
-    for (const [catCode, tags] of Object.entries(tagsByCategory)) {
-        const category = CATEGORIES[catCode];
-        if (!category) continue;
-
-        const group = document.createElement('div');
-        group.className = 'tag-group';
-        group.innerHTML = `
-            <div class="tag-group-title">── ${category.emoji} ${category.name} ──</div>
-            <div class="chips">
-                ${tags.map(tag => {
-            const isSelected = state.selectedTags.has(tag.code);
-            return `
-                        <div class="chip tag-chip ${isSelected ? 'selected' : 'disabled'}" data-tag="${tag.code}">
-                            ${tag.name}
-                        </div>
-                    `;
-        }).join('')}
-            </div>
-        `;
-        container.appendChild(group);
-    }
-
-    // Привязываем клики
-    container.querySelectorAll('.tag-chip').forEach(chip => {
-        chip.addEventListener('click', () => toggleTagInSettings(chip));
-    });
+    return tagsByCategory;
 }
 
-// Переключение тега на экране настроек
-function toggleTagInSettings(chip) {
-    const tagCode = chip.dataset.tag;
-
-    if (state.selectedTags.has(tagCode)) {
-        state.selectedTags.delete(tagCode);
-        chip.classList.remove('selected');
-        chip.classList.add('disabled');
-    } else {
-        state.selectedTags.add(tagCode);
-        chip.classList.add('selected');
-        chip.classList.remove('disabled');
-    }
-}
-
-// Сохранение и закрытие
+// Сохранение
 function saveAndClose() {
     const data = {
         roles: Array.from(state.selectedRoles),
         tags: Array.from(state.selectedTags)
     };
 
-    console.log('Saving data:', data);
-
-    // Отправляем данные в бота
     if (tg) {
         tg.sendData(JSON.stringify(data));
+        // На случай если окно не закроется само (хотя должно)
+        setTimeout(() => tg.close(), 100);
     } else {
-        // Для тестирования без Telegram
         showScreen('success');
-        console.log('Data would be sent:', data);
     }
 }

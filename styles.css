@@ -109,7 +109,7 @@ h2 {
 .chip.selected {
     background-color: var(--chip-selected-bg);
     color: var(--chip-selected-text);
-    font-weight: 500;
+    /* font-weight: 500; Убрал жирность */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
