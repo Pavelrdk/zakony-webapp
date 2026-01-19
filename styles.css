@@ -192,11 +192,17 @@ h3 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    /* Добавлена легкая обводка */
+    box-sizing: border-box;
+    /* Чтобы border не менял размер */
 }
 
 .chip.selected {
     background-color: var(--chip-selected-bg);
     color: var(--chip-selected-text);
+    border-color: transparent;
+    /* Убираем обводку при выборе */
 }
 
 .chip:active {

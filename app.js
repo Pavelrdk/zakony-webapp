@@ -8,27 +8,24 @@ const state = {
     selectedRoles: new Set(),
     selectedTags: new Set(),
     currentTab: 'home',
-    settingsScreen: 'roles', // roles -> review -> settings -> success
+    settingsScreen: 'roles', // roles -> settings -> success
     searchSource: 'my' // 'my' or 'all'
 };
 
 // Инициализация Telegram WebApp
-let tg = null;
-if (window.Telegram && window.Telegram.WebApp) {
-    tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
+let tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
-    // Настраиваем цвета из темы
-    const root = document.documentElement;
-    if (tg.themeParams) {
-        if (tg.themeParams.bg_color) root.style.setProperty('--bg-color', tg.themeParams.bg_color);
-        if (tg.themeParams.text_color) root.style.setProperty('--text-color', tg.themeParams.text_color);
-        if (tg.themeParams.hint_color) root.style.setProperty('--hint-color', tg.themeParams.hint_color);
-        if (tg.themeParams.button_color) root.style.setProperty('--button-color', tg.themeParams.button_color);
-        if (tg.themeParams.button_text_color) root.style.setProperty('--button-text-color', tg.themeParams.button_text_color);
-        if (tg.themeParams.secondary_bg_color) root.style.setProperty('--secondary-bg-color', tg.themeParams.secondary_bg_color);
-    }
+// Настраиваем цвета из темы
+const root = document.documentElement;
+if (tg.themeParams) {
+    if (tg.themeParams.bg_color) root.style.setProperty('--bg-color', tg.themeParams.bg_color);
+    if (tg.themeParams.text_color) root.style.setProperty('--text-color', tg.themeParams.text_color);
+    if (tg.themeParams.hint_color) root.style.setProperty('--hint-color', tg.themeParams.hint_color);
+    if (tg.themeParams.button_color) root.style.setProperty('--button-color', tg.themeParams.button_color);
+    if (tg.themeParams.button_text_color) root.style.setProperty('--button-text-color', tg.themeParams.button_text_color);
+    if (tg.themeParams.secondary_bg_color) root.style.setProperty('--secondary-bg-color', tg.themeParams.secondary_bg_color);
 }
 
 // DOM элементы
@@ -45,7 +42,6 @@ const dom = {
     },
     settingsScreens: {
         roles: document.getElementById('screen-roles'),
-        review: document.getElementById('screen-preview'),
         settings: document.getElementById('screen-all'),
         success: document.getElementById('screen-success')
     },
@@ -58,8 +54,7 @@ const dom = {
 document.addEventListener('DOMContentLoaded', () => {
     init();
 
-    // Установим сегодняшнюю дату в инпуты как дефолт? Нет, лучше пусто или плейсхолдер.
-    // Но лучше дату по умолчанию: Сегодня
+    // Дата по умолчанию: сегодня
     const today = new Date().toISOString().split('T')[0];
     dom.dateEnd.value = today;
     // Start date = месяц назад
@@ -69,10 +64,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function init() {
-    // Рендер начального состояния
-    renderRoles();
-    renderAllTags(); // Рендерим заранее
-    updateHomePreview();
+    // 1. Пытаемся загрузить данные из CloudStorage
+    tg.CloudStorage.getItems(['selectedTags', 'selectedRoles'], (err, result) => {
+        if (!err && result) {
+            if (result.selectedTags) {
+                try {
+                    const tags = JSON.parse(result.selectedTags);
+                    tags.forEach(t => state.selectedTags.add(t));
+                } catch (e) { console.error("Error parsing tags", e); }
+            }
+            if (result.selectedRoles) {
+                try {
+                    const roles = JSON.parse(result.selectedRoles);
+                    roles.forEach(r => state.selectedRoles.add(r));
+                } catch (e) { console.error("Error parsing roles", e); }
+            }
+        }
+
+        // После загрузки рендерим UI
+        renderRoles();
+        renderAllTags();
+        updateHomePreview();
+    });
 
     // Включаем первую вкладку
     switchTab('home');
@@ -93,9 +106,13 @@ function switchTab(tabId) {
     // Управление FAB (кнопки есть только в Settings)
     updateFab();
 
-    // Если перешли в настройки, проверяем экран
+    // Если перешли в настройки, сбрасываем на первый экран
     if (tabId === 'settings') {
-        showSettingsScreen(state.settingsScreen);
+        // Если уже есть выбор, можно показать сразу настройки?
+        // Но пользователь просил "сразу в темах добавить".
+        // Логичнее начать с ролей, если их нет. А если есть - можно и теги.
+        // Но пока оставим старт с ролей для простоты flow.
+        showSettingsScreen('roles');
     }
 
     // Если перешли домой - обновляем превью
@@ -119,7 +136,6 @@ function updateHomePreview() {
 
         // Список ролей текстом
         const roleNames = [];
-        // Пройдемся по ROLES чтобы найти имена
         for (const grp of Object.values(ROLES)) {
             for (const r of grp.items) {
                 if (state.selectedRoles.has(r.code)) roleNames.push(r.emoji + ' ' + r.name);
@@ -148,11 +164,9 @@ function getNoun(number, one, two, five) {
 /* ================= SEARCH ================= */
 
 function toggleSearchSource(el, source) {
-    // UI update
     const group = el.parentElement;
     group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-
     state.searchSource = source;
 }
 
@@ -169,20 +183,15 @@ function setPreset(year) {
 function quickSearch(period) {
     const end = new Date();
     const start = new Date();
-
     if (period === 'week') {
         start.setDate(end.getDate() - 7);
     } else if (period === 'month') {
         start.setMonth(end.getMonth() - 1);
     }
-
     dom.dateStart.value = start.toISOString().split('T')[0];
     dom.dateEnd.value = end.toISOString().split('T')[0];
-
-    // Auto switch to search tab and do search?
-    // Or just submit immediately?
-    // Let's submit immediately
-    doSearch();
+    switchTab('search');
+    // Можно сразу искать, но лучше дать пользователю подтвердить кнопкой
 }
 
 function doSearch() {
@@ -198,31 +207,34 @@ function doSearch() {
         action: 'search',
         period_start: start,
         period_end: end,
-        source: state.searchSource, // 'my' or 'all'
-        // Если 'my', бот использует сохраненные подписки пользователя из БД
+        source: state.searchSource
     };
 
-    sendDataToBot(data);
+    // Используем sendData (закрывает WebApp и шлет данные боту)
+    tg.sendData(JSON.stringify(data));
+    // Не закрываем сами пока (sendData обычно закрывает, но на всякий)
+    // tg.close(); вызывается автоматически telegram-ом при sendData
 }
 
 /* ================= SETTINGS LOGIC ================= */
 
 function showSettingsScreen(screenName) {
     // Hide all inside settings tab
-    Object.values(dom.settingsScreens).forEach(s => s.classList.remove('active'));
+    Object.values(dom.settingsScreens).forEach(s => {
+        if (s) s.classList.remove('active');
+    });
 
     if (dom.settingsScreens[screenName]) {
         dom.settingsScreens[screenName].classList.add('active');
         state.settingsScreen = screenName;
     }
 
-    // Render dependent content
-    if (screenName === 'review') renderReview();
-    if (screenName === 'settings') renderSettingsGridOnly(); // Refresh selections
+    // Если перешли к "Все темы" (settings), обновим список (вдруг роли поменялись)
+    if (screenName === 'settings') {
+        renderAllTags();
+    }
 
     updateFab();
-
-    // Scroll to top of tab content
     dom.tabs.settings.scrollTop = 0;
 }
 
@@ -232,40 +244,35 @@ function updateFab() {
     if (state.currentTab !== 'settings') return;
 
     if (state.settingsScreen === 'roles') {
-        if (state.selectedRoles.size > 0) {
-            dom.fabContainer.innerHTML = `<button class="fab-btn" onclick="showSettingsScreen('review')">Далее →</button>`;
-        }
-    } else if (state.settingsScreen === 'review') {
+        // Кнопка "Далее" ведет сразу к выбору всех тем
+        // Если ничего не выбрано - тоже можно идти
+        dom.fabContainer.innerHTML = `<button class="fab-btn" onclick="showSettingsScreen('settings')">Выбрать темы →</button>`;
+    } else if (state.settingsScreen === 'settings') {
         dom.fabContainer.innerHTML = `
             <button class="fab-btn" style="background:#8e8e93; margin-right:auto" onclick="showSettingsScreen('roles')">← Роли</button>
             <button class="fab-btn" onclick="saveSettings()">Сохранить ✓</button>
          `;
-        // Add "Fine tuning" logic? 
-        // Let's add a button in the layout instead of FAB for "More settings"
-        // Actually, let's put "Fine Tune" button in the Review Screen content (already there implies clicking on chips to remove, but we need 'Add more' button)
-        // Let's add a "All Themes" button in the content of review screen.
-        addFineTuneButtonToReview();
 
-    } else if (state.settingsScreen === 'settings') {
-        dom.fabContainer.innerHTML = `
-            <button class="fab-btn" style="background:#8e8e93; margin-right:auto" onclick="showSettingsScreen('review')">← Назад</button>
-            <button class="fab-btn" onclick="showSettingsScreen('review')">Готово</button>
-         `;
+        // Добавляем подсказку внизу списка
+        addHintToSettings();
     }
 }
 
-function addFineTuneButtonToReview() {
-    const container = document.getElementById('preview-tags-container');
-    // Check if button already exists
-    if (!document.getElementById('btn-fine-tune')) {
-        const btn = document.createElement('div');
-        btn.id = 'btn-fine-tune';
-        btn.innerHTML = `<button class="btn btn-secondary" style="margin-top:16px" onclick="showSettingsScreen('settings')">➕ Добавить / Убрать темы</button>`;
-        container.parentElement.appendChild(btn); // Append to screen-review, not grid container
+function addHintToSettings() {
+    const container = document.getElementById('all-tags-container');
+    // Проверяем, есть ли подсказка
+    if (!document.getElementById('settings-hint')) {
+        const hint = document.createElement('div');
+        hint.id = 'settings-hint';
+        hint.className = 'subtitle';
+        hint.style.textAlign = 'center';
+        hint.style.marginTop = '20px';
+        hint.textContent = "👆 Это темы, которые мы подобрали. Удалите лишние или добавьте новые.";
+        container.appendChild(hint);
     }
 }
 
-// ---- Render Logic (Adapted from old app.js) ----
+// ---- Render Logic ----
 
 function renderRoles() {
     const container = document.getElementById('roles-container');
@@ -274,13 +281,23 @@ function renderRoles() {
     for (const [key, group] of Object.entries(ROLES)) {
         const section = document.createElement('div');
         section.className = 'category-section';
-        section.innerHTML = `<div class="category-title">${group.title}</div>`; // New CSS class? Check styles.
+        // section.innerHTML = `<div class="category-title">${group.title}</div>`; 
+        // Не отображаем заголовок группы ("КТО ВЫ?"), так как он есть в заголовке экрана
+        // Либо отображаем, если групп несколько. У нас 2 группы (Соц и Бизнес)
+        // Давайте отобразим для ясности
+        const title = document.createElement('div');
+        title.className = 'category-title';
+        title.textContent = group.title;
+        container.appendChild(title);
 
         const grid = document.createElement('div');
         grid.className = 'chips-grid';
 
         grid.innerHTML = group.items.map(role => `
-            <div class="chip" data-role="${role.code}" data-tags="${role.tags.join(',')}">
+            <div class="chip ${state.selectedRoles.has(role.code) ? 'selected' : ''}" 
+                 data-role="${role.code}" 
+                 data-tags="${role.tags.join(',')}"
+                 onclick="toggleRole(this)">
                 <span class="chip-icon">${role.emoji}</span> ${role.name}
             </div>
         `).join('');
@@ -289,98 +306,34 @@ function renderRoles() {
         container.appendChild(section);
     }
 
-    container.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => toggleRole(chip));
-    });
+    // Привязывать onclick не обязательно через JS, можно инлайн (как выше)
 }
 
-function toggleRole(chip) {
+// Сделаем глобальными для вызова из HTML
+window.toggleRole = function (chip) {
     const roleCode = chip.dataset.role;
     const tags = chip.dataset.tags.split(',');
 
     if (state.selectedRoles.has(roleCode)) {
         state.selectedRoles.delete(roleCode);
         chip.classList.remove('selected');
-        tags.forEach(t => {
-            if (!isTagUsedByOtherRoles(t, roleCode)) state.selectedTags.delete(t);
-        });
+        // При удалении роли НЕ удаляем теги сразу, 
+        // так как пользователь мог их вручную добавить или они нужны другой роли
+        // Логика: Роль -> добавляет теги. Снятие роли -> ничего не удаляет (безопаснее), 
+        // или удаляет только если тег не выбран вручную?
+        // Просьба пользователя: "сразу в темах человек и добавит что нехватает или удалит лишнее"
+        // Значит оставим "ADD only" логику при выборе роли.
     } else {
         state.selectedRoles.add(roleCode);
         chip.classList.add('selected');
+        // Добавляем теги
         tags.forEach(t => state.selectedTags.add(t));
     }
+
+    // Сохраняем промежуточное состояние
+    saveToCloud();
     updateFab();
-}
-
-function isTagUsedByOtherRoles(tag, excludeRole) {
-    for (const group of Object.values(ROLES)) {
-        for (const role of group.items) {
-            if (role.code !== excludeRole && state.selectedRoles.has(role.code)) {
-                if (role.tags.includes(tag)) return true;
-            }
-        }
-    }
-    return false;
-}
-
-function renderReview() {
-    const rolesList = document.getElementById('selected-roles-list');
-    const rolesNames = [];
-    state.selectedRoles.forEach(rCode => {
-        // Find name
-        for (const grp of Object.values(ROLES)) {
-            const r = grp.items.find(x => x.code === rCode);
-            if (r) rolesNames.push(r.emoji + ' ' + r.name);
-        }
-    });
-    rolesList.textContent = rolesNames.join(', ') || 'Нет ролей';
-
-    const container = document.getElementById('preview-tags-container');
-    container.innerHTML = '';
-
-    const tagsByCat = groupTagsByCategory();
-
-    for (const [catCode, tags] of Object.entries(tagsByCat)) {
-        const category = CATEGORIES[catCode];
-        if (!category) continue;
-
-        const activeTags = tags.filter(t => state.selectedTags.has(t.code));
-        if (activeTags.length === 0) continue;
-
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'category-section';
-        groupDiv.innerHTML = `<div class="category-title">${category.emoji} ${category.name}</div>`;
-
-        const grid = document.createElement('div');
-        grid.className = 'chips-grid';
-        grid.innerHTML = activeTags.map(t => `
-            <div class="chip selected" data-tag="${t.code}">
-                ${t.name} <span style="opacity:0.6; margin-left:4px">✕</span>
-            </div>
-        `).join('');
-
-        groupDiv.appendChild(grid);
-        container.appendChild(groupDiv);
-    }
-
-    // Add delete listeners
-    container.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            state.selectedTags.delete(chip.dataset.tag);
-            renderReview();
-        });
-    });
-
-    // Ensure button exists (handled in updateFab -> addFineTuneButton)
-    addFineTuneButtonToReview();
-}
-
-function renderSettingsGridOnly() {
-    // Reuse renderAllTags but just update classes?
-    // Easier to re-render or toggle classes.
-    // Let's re-render to be safe.
-    renderAllTags();
-}
+};
 
 function renderAllTags() {
     const container = document.getElementById('all-tags-container');
@@ -399,7 +352,9 @@ function renderAllTags() {
         const grid = document.createElement('div');
         grid.className = 'chips-grid';
         grid.innerHTML = tags.map(t => `
-             <div class="chip ${state.selectedTags.has(t.code) ? 'selected' : ''}" data-tag="${t.code}">
+             <div class="chip ${state.selectedTags.has(t.code) ? 'selected' : ''}" 
+                  data-tag="${t.code}"
+                  onclick="toggleTag(this)">
                 ${t.name}
             </div>
         `).join('');
@@ -407,20 +362,19 @@ function renderAllTags() {
         section.appendChild(grid);
         container.appendChild(section);
     }
-
-    container.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const t = chip.dataset.tag;
-            if (state.selectedTags.has(t)) {
-                state.selectedTags.delete(t);
-                chip.classList.remove('selected');
-            } else {
-                state.selectedTags.add(t);
-                chip.classList.add('selected');
-            }
-        });
-    });
 }
+
+window.toggleTag = function (chip) {
+    const t = chip.dataset.tag;
+    if (state.selectedTags.has(t)) {
+        state.selectedTags.delete(t);
+        chip.classList.remove('selected');
+    } else {
+        state.selectedTags.add(t);
+        chip.classList.add('selected');
+    }
+    saveToCloud();
+};
 
 function groupTagsByCategory() {
     const res = {};
@@ -431,22 +385,29 @@ function groupTagsByCategory() {
     return res;
 }
 
-function saveSettings() {
+function saveToCloud() {
+    // Сохранение в CloudStorage
+    const rolesStr = JSON.stringify(Array.from(state.selectedRoles));
+    const tagsStr = JSON.stringify(Array.from(state.selectedTags));
+
+    tg.CloudStorage.setItem('selectedRoles', rolesStr);
+    tg.CloudStorage.setItem('selectedTags', tagsStr);
+}
+
+window.saveSettings = function () {
     const data = {
         action: 'save_settings',
         roles: Array.from(state.selectedRoles),
         tags: Array.from(state.selectedTags)
     };
-    sendDataToBot(data);
-}
+    tg.sendData(JSON.stringify(data));
+    // tg.close();
+};
 
-function sendDataToBot(data) {
-    if (tg) {
-        tg.sendData(JSON.stringify(data));
-        setTimeout(() => tg.close(), 100);
-    } else {
-        // Mock for browser testing
-        console.log("Sending data to bot:", data);
-        if (data.action === 'save_settings') showSettingsScreen('success');
-    }
-}
+/* Globals for inline calls */
+window.switchTab = switchTab;
+window.quickSearch = quickSearch;
+window.doSearch = doSearch;
+window.setPreset = setPreset;
+window.toggleSearchSource = toggleSearchSource;
+window.showSettingsScreen = showSettingsScreen;
