@@ -303,14 +303,22 @@ h3 {
     background: var(--button-color);
     color: white;
     border: none;
-    border-radius: 20px;
-    padding: 10px 20px;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(51, 144, 236, 0.4);
+    border-radius: 14px;
+    /* Чуть меньше радиус, более "кнопочный" */
+    padding: 14px 24px;
+    /* Больше паддинг */
+    font-size: 14px;
+    font-weight: 700;
+    /* Жирнее */
+    text-transform: uppercase;
+    /* ЗАГЛАВНЫМИ */
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    /* Сильнее тень */
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .fab-btn:active {

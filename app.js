@@ -385,7 +385,20 @@ window.saveSettings = function () {
         roles: Array.from(state.selectedRoles),
         tags: Array.from(state.selectedTags)
     };
-    if (tg) tg.sendData(JSON.stringify(data));
+
+    if (tg) {
+        try {
+            tg.sendData(JSON.stringify(data));
+            // Принудительно закрываем, если sendData сам не закрыл (зависит от платформы)
+            setTimeout(() => tg.close(), 100);
+        } catch (e) {
+            tg.showAlert("Ошибка при сохранении: " + e.message);
+        }
+    } else {
+        console.error("Telegram WebApp API not available");
+        // Fallback for testing in browser without TG
+        alert("Data to save: " + JSON.stringify(data));
+    }
 };
 
 /* Globals for inline calls */
