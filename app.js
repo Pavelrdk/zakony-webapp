@@ -1,15 +1,15 @@
 /**
  * Super App для Telegram - Законы РФ
- * Включает: Монитор, Поиск, Настройки
+ * v2: Без CloudStorage, чистая сессия каждый раз
  */
 
-// Состояние приложения
+// Состояние приложения (сбрасывается каждый раз)
 const state = {
     selectedRoles: new Set(),
     selectedTags: new Set(),
     currentTab: 'home',
-    settingsScreen: 'roles', // roles -> settings -> success
-    searchSource: 'my' // 'my' or 'all'
+    settingsScreen: 'roles',
+    searchSource: 'my'
 };
 
 // Инициализация Telegram WebApp
@@ -18,7 +18,6 @@ if (tg) {
     tg.ready();
     tg.expand();
 
-    // Настраиваем цвета из темы
     const root = document.documentElement;
     if (tg.themeParams) {
         if (tg.themeParams.bg_color) root.style.setProperty('--bg-color', tg.themeParams.bg_color);
@@ -56,63 +55,19 @@ const dom = {
 document.addEventListener('DOMContentLoaded', () => {
     init();
 
-    // Дата по умолчанию: сегодня
     const today = new Date().toISOString().split('T')[0];
     if (dom.dateEnd) dom.dateEnd.value = today;
 
-    // Start date = месяц назад
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     if (dom.dateStart) dom.dateStart.value = lastMonth.toISOString().split('T')[0];
 });
 
 function init() {
-    // 1. ПЕРВАЯ ОТРИСОВКА (немедленно)
+    // Рендерим пустой UI
     renderRoles();
     renderAllTags();
     updateHomePreview();
-
-    // 2. ЗАГРУЗКА ИЗ ОБЛАКА (асинхронно, если есть TG)
-    if (tg && tg.CloudStorage) {
-        try {
-            tg.CloudStorage.getItems(['selectedTags', 'selectedRoles'], (err, result) => {
-                if (!err && result) {
-                    let hasChanges = false;
-
-                    if (result.selectedTags) {
-                        try {
-                            const tags = JSON.parse(result.selectedTags);
-                            if (Array.isArray(tags) && tags.length > 0) {
-                                tags.forEach(t => state.selectedTags.add(t));
-                                hasChanges = true;
-                            }
-                        } catch (e) { }
-                    }
-
-                    if (result.selectedRoles) {
-                        try {
-                            const roles = JSON.parse(result.selectedRoles);
-                            if (Array.isArray(roles) && roles.length > 0) {
-                                roles.forEach(r => state.selectedRoles.add(r));
-                                hasChanges = true;
-                            }
-                        } catch (e) { }
-                    }
-
-                    // Если подгрузили данные — обновляем UI
-                    if (hasChanges) {
-                        renderRoles();
-                        renderAllTags();
-                        updateHomePreview();
-                    }
-                }
-            });
-        } catch (e) {
-            console.error("CloudStorage error", e);
-        }
-    }
-
-    // Включаем первую вкладку
     switchTab('home');
 }
 
@@ -121,16 +76,13 @@ function init() {
 function switchTab(tabId) {
     if (!dom.tabs[tabId] || !dom.navItems[tabId]) return;
 
-    // Скрываем все вкладки
     Object.values(dom.tabs).forEach(el => el.classList.remove('active'));
     Object.values(dom.navItems).forEach(el => el.classList.remove('active'));
 
-    // Показываем нужную
     dom.tabs[tabId].classList.add('active');
     dom.navItems[tabId].classList.add('active');
     state.currentTab = tabId;
 
-    // Управление FAB (кнопки есть только в Settings)
     updateFab();
 
     if (tabId === 'settings') {
@@ -149,7 +101,9 @@ function updateHomePreview() {
     const subtitle = document.getElementById('home-subtitle');
     if (!list || !subtitle) return;
 
-    if (state.selectedRoles.size === 0 && state.selectedTags.size === 0) {
+    const hasSubs = state.selectedRoles.size > 0 || state.selectedTags.size > 0;
+
+    if (!hasSubs) {
         list.textContent = "Нет активных подписок";
         subtitle.textContent = "Начните с настройки тем.";
     } else {
@@ -165,19 +119,12 @@ function updateHomePreview() {
             }
         }
         list.textContent = roleNames.join(', ') || "Точные настройки";
-
-        // Показываем поиск и быстрый просмотр
-        if (dom.navItems.search) dom.navItems.search.style.display = 'flex';
-        document.getElementById('quick-view-card').style.display = 'block';
     }
 
-    // Если нет подписок - скрываем лишнее
-    if (state.selectedRoles.size === 0 && state.selectedTags.size === 0) {
-        if (dom.navItems.search) dom.navItems.search.style.display = 'none';
-
-        const qv = document.getElementById('quick-view-card');
-        if (qv) qv.style.display = 'none';
-    }
+    // Скрываем/показываем элементы в зависимости от наличия подписок
+    if (dom.navItems.search) dom.navItems.search.style.display = hasSubs ? 'flex' : 'none';
+    const qv = document.getElementById('quick-view-card');
+    if (qv) qv.style.display = hasSubs ? 'block' : 'none';
 }
 
 function getNoun(number, one, two, five) {
@@ -266,16 +213,14 @@ function updateFab() {
     if (state.currentTab !== 'settings') return;
 
     if (state.settingsScreen === 'roles') {
-        dom.fabContainer.innerHTML = `<button class="fab-btn" onclick="showSettingsScreen('settings')">Выбрать темы →</button>`;
+        dom.fabContainer.innerHTML = `<button class="fab-btn" onclick="showSettingsScreen('settings')">ВЫБРАТЬ ТЕМЫ →</button>`;
     } else if (state.settingsScreen === 'settings') {
         dom.fabContainer.innerHTML = `
-            <button class="fab-btn" style="background:#8e8e93; margin-right:auto" onclick="showSettingsScreen('roles')">← Роли</button>
-            <button class="fab-btn" onclick="saveSettings()">Сохранить ✓</button>
+            <button class="fab-btn" style="background:#8e8e93; margin-right:auto" onclick="showSettingsScreen('roles')">← РОЛИ</button>
+            <button class="fab-btn" onclick="saveSettings()">СОХРАНИТЬ ✓</button>
          `;
     }
 }
-
-
 
 // ---- Render Logic ----
 
@@ -312,21 +257,49 @@ function renderRoles() {
     }
 }
 
+/**
+ * Переключение роли - СИНХРОНИЗИРОВАННО с тегами!
+ * При снятии роли - удаляются её теги (если они не принадлежат другим активным ролям).
+ */
 window.toggleRole = function (chip) {
     const roleCode = chip.dataset.role;
-    const tags = chip.dataset.tags.split(',');
+    const roleTags = chip.dataset.tags.split(',').filter(t => t);
 
     if (state.selectedRoles.has(roleCode)) {
+        // === СНЯТИЕ РОЛИ ===
         state.selectedRoles.delete(roleCode);
         chip.classList.remove('selected');
+
+        // Собираем теги, которые нужны ДРУГИМ активным ролям
+        const tagsFromOtherRoles = new Set();
+        if (typeof ROLES !== 'undefined') {
+            for (const grp of Object.values(ROLES)) {
+                for (const r of grp.items) {
+                    if (state.selectedRoles.has(r.code)) {
+                        r.tags.forEach(t => tagsFromOtherRoles.add(t));
+                    }
+                }
+            }
+        }
+
+        // Удаляем теги этой роли, если они НЕ нужны другим ролям
+        roleTags.forEach(tag => {
+            if (!tagsFromOtherRoles.has(tag)) {
+                state.selectedTags.delete(tag);
+            }
+        });
+
     } else {
+        // === ДОБАВЛЕНИЕ РОЛИ ===
         state.selectedRoles.add(roleCode);
         chip.classList.add('selected');
-        tags.forEach(t => state.selectedTags.add(t));
+        roleTags.forEach(t => state.selectedTags.add(t));
     }
 
-    saveToCloud();
+    // Перерендерим теги, чтобы отразить изменения
+    renderAllTags();
     updateFab();
+    updateHomePreview();
 };
 
 function renderAllTags() {
@@ -370,7 +343,7 @@ window.toggleTag = function (chip) {
         state.selectedTags.add(t);
         chip.classList.add('selected');
     }
-    saveToCloud();
+    updateHomePreview();
 };
 
 function groupTagsByCategory() {
@@ -380,15 +353,6 @@ function groupTagsByCategory() {
         res[t.category].push({ code, ...t });
     }
     return res;
-}
-
-function saveToCloud() {
-    if (tg && tg.CloudStorage) {
-        const rolesStr = JSON.stringify(Array.from(state.selectedRoles));
-        const tagsStr = JSON.stringify(Array.from(state.selectedTags));
-        tg.CloudStorage.setItem('selectedRoles', rolesStr);
-        tg.CloudStorage.setItem('selectedTags', tagsStr);
-    }
 }
 
 window.saveSettings = function () {
@@ -401,15 +365,13 @@ window.saveSettings = function () {
     if (tg) {
         try {
             tg.sendData(JSON.stringify(data));
-            // Принудительно закрываем, если sendData сам не закрыл (зависит от платформы)
             setTimeout(() => tg.close(), 100);
         } catch (e) {
             tg.showAlert("Ошибка при сохранении: " + e.message);
         }
     } else {
-        console.error("Telegram WebApp API not available");
-        // Fallback for testing in browser without TG
-        alert("Data to save: " + JSON.stringify(data));
+        console.log("Data to save:", data);
+        alert("Сохранено (тестовый режим):\n" + JSON.stringify(data, null, 2));
     }
 };
 
