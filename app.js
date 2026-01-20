@@ -64,11 +64,70 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function init() {
-    // Рендерим пустой UI
+    // 1. Рендерим пустой UI сразу
     renderRoles();
     renderAllTags();
     updateHomePreview();
     switchTab('home');
+
+    // 2. Загружаем подписки из API (асинхронно)
+    loadSubscriptionsFromApi();
+}
+
+// URL API сервера на VPS (ИЗМЕНИ НА СВОЙ!)
+const API_BASE_URL = 'http://ea62d5b6e789.vps.myjino.ru:8080';
+
+/**
+ * Загружает подписки из API по user_id
+ */
+async function loadSubscriptionsFromApi() {
+    // Получаем user_id из Telegram WebApp
+    let userId = null;
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        userId = tg.initDataUnsafe.user.id;
+    }
+
+    if (!userId) {
+        console.log('No user_id available, skipping API load');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/subscriptions?user_id=${userId}`);
+        if (!response.ok) {
+            console.error('API error:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+        const tags = data.tags || [];
+
+        if (tags.length > 0) {
+            // Добавляем теги в состояние
+            tags.forEach(t => state.selectedTags.add(t));
+
+            // Определяем роли по выбранным тегам
+            if (typeof ROLES !== 'undefined') {
+                for (const grp of Object.values(ROLES)) {
+                    for (const role of grp.items) {
+                        const allRoleTagsSelected = role.tags.every(t => state.selectedTags.has(t));
+                        if (allRoleTagsSelected && role.tags.length > 0) {
+                            state.selectedRoles.add(role.code);
+                        }
+                    }
+                }
+            }
+
+            // Перерендериваем UI
+            renderRoles();
+            renderAllTags();
+            updateHomePreview();
+
+            console.log('Loaded from API:', tags.length, 'tags,', state.selectedRoles.size, 'roles');
+        }
+    } catch (e) {
+        console.error('Failed to load subscriptions from API:', e);
+    }
 }
 
 /* ================= NAVIGATION ================= */
