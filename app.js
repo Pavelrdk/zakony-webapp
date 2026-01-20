@@ -75,7 +75,7 @@ function init() {
 }
 
 // URL API сервера на VPS (ИЗМЕНИ НА СВОЙ!)
-const API_BASE_URL = 'http://ea62d5b6e789.vps.myjino.ru:8080';
+const API_BASE_URL = 'https://ea62d5b6e789.vps.myjino.ru:8080';
 
 /**
  * Загружает подписки из API по user_id
@@ -441,3 +441,4 @@ window.doSearch = doSearch;
 window.setPreset = setPreset;
 window.toggleSearchSource = toggleSearchSource;
 window.showSettingsScreen = showSettingsScreen;
+
